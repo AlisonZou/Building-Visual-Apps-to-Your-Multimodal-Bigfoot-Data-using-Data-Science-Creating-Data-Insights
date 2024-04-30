@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bigfoot Sightings Word Cloud</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-cloud/build/d3.layout.cloud.js"></script>
+    <style>
+        text {
+            font-family: sans-serif;
+            font-size: 10px;
+            fill: steelblue;
+        }
+    </style>
+</head>
+<body>
+    <svg width="800" height="600"></svg>
+
+    <script>
+        // Load the data from the JSON file
+        d3.json("bfro_subset.json").then(function(data) {
+            // Extract the "Time and Conditions" text and split it into words
+            var words = data.map(d => d["Time And Conditions"])
+                .join(" ")
+                .toLowerCase()
+                .split(/\s+/)
+                .filter(word => word.length > 2 && word !== "and"); // Include shorter words, exclude common words
+
+            // Count the frequency of each word
+            var wordCounts = d3.rollup(words, v => v.length, d => d);
+
+            // Convert the Map to an array of objects with "text" and "size" properties
+            var wordArray = Array.from(wordCounts, ([text, size]) => ({text, size}));
+
+            // Set up the word cloud layout
+            var layout = d3.layout.cloud()
+                .size([800, 600])
+                .words(wordArray)
+                .padding(2)
+                .rotate(() => (~~(Math.random() * 6) - 3) * 30)
+                .font("sans-serif")
+                .fontSize(d => Math.max(10, Math.min(60, Math.sqrt(d.size) * 10))) // Adjust font size range
+                .on("end", draw);
+
+            // Draw the word cloud
+            function draw(words) {
+                const svg = d3.select("svg");
+                svg.append("g")
+                    .attr("transform", "translate(400,300)") // Adjust translation for larger SVG
+                  .selectAll("text")
+                  .data(words)
+                  .enter().append("text")
+                    .style("font-size", d => d.size + "px")
+                    .style("font-family", "sans-serif")
+                    .attr("text-anchor", "middle")
+                    .attr("transform", d => `translate(${d.x},${d.y}) rotate(${d.rotate})`)
+                    .text(d => d.text);
+            }
+
+            // Run the layout
+            layout.start();
+        });
+    </script>
+</body>
+</html>

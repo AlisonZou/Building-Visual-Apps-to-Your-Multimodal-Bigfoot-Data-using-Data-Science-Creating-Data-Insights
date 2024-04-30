@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BFRO Sightings by County</title>
+    <style>
+        .county {
+            fill: #fff;
+            stroke: #666;
+            stroke-width: 0.5px;
+        }
+        .county:hover {
+            fill: orange;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            width: auto;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #666;
+            border-radius: 5px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="tooltip" id="tooltip"></div>
+    <script>
+        const width = 960, height = 600;
+
+        const projection = d3.geoAlbersUsa()
+            .scale(1280)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath()
+            .projection(projection);
+
+        const svg = d3.select("#map").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const tooltip = d3.select("#tooltip");
+
+        const sightingsByCounty = {};
+
+        d3.json("bfro_subset.json").then(data => {
+            data.forEach(d => {
+                const county = d.County;
+                sightingsByCounty[county] = (sightingsByCounty[county] || 0) + 1;
+            });
+
+            d3.json("us-counties-states.json").then(topology => {
+                const counties = topojson.feature(topology, topology.objects.counties);
+
+                svg.selectAll(".county")
+                    .data(counties.features)
+                    .enter().append("path")
+                    .attr("class", "county")
+                    .attr("d", path)
+                    .style("fill", d => {
+                        const sightings = sightingsByCounty[d.properties.name];
+                        return sightings ? d3.interpolateReds(sightings / 10) : "#fff";
+                    })
+                    .on("mouseover", function(event, d) {
+                        const [x, y] = d3.pointer(event);
+                        tooltip.style("left", x + "px")
+                            .style("top", y + "px")
+                            .style("opacity", 1)
+                            .text(`${d.properties.name}: ${sightingsByCounty[d.properties.name] || 0} sightings`);
+                    })
+                    .on("mouseout", () => tooltip.style("opacity", 0));
+            });
+        });
+    </script>
+</body>
+</html>
